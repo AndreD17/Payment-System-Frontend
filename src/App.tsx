@@ -11,6 +11,7 @@ export default function App() {
       <Route path="/success" element={<Success />} />
       <Route path="/cancel" element={<Cancel />} />
       <Route path="/admin/refund" element={<AdminRefund />} />
+      <Route path="/billing/success" element={<Success />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
