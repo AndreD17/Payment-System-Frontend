@@ -55,7 +55,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <FiLock /> PCI-safe
               </span>
               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/75">
-                <FiArrowUpRight /> Stripe Checkout
+                <FiArrowUpRight />
               </span>
             </div>
           </div>
@@ -70,7 +70,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <main className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-8">{children}</main>
 
       <footer className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 pb-10 text-xs text-white/50">
-        Built by Damilare • Stripe Checkout + Webhooks + Postgres
+        Built by Damilare Samuel • Stripe Checkout + Webhooks + Postgres
       </footer>
     </div>
   );
