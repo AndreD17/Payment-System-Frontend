@@ -61,7 +61,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           <nav className="flex items-center gap-1">
-            <NavLink to="/" label="Pricing" />
+            <NavLink to="/" label="Home" />
+            <NavLink to="/pricing" label="Pricing" />
             <NavLink to="/admin/refund" label="Admin" />
           </nav>
         </div>

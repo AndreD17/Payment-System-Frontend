@@ -1,15 +1,9 @@
 import { useMemo, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  FiArrowRight,
-  FiCheckCircle,
-  FiInfo,
-  FiMail,
-  FiShield,
-  FiZap,
-} from "react-icons/fi";
+import { FiArrowRight, FiCheckCircle, FiInfo, FiMail, FiShield, FiZap } from "react-icons/fi";
 import Layout from "../components/Layout";
-import { api } from "../api";
+import { api, getAccessToken } from "../api";
 
 type Plan = {
   id: number;
@@ -32,6 +26,11 @@ export default function Pricing() {
   const [error, setError] = useState("");
   const [billing, setBilling] = useState<"month" | "year">("month");
 
+  const nav = useNavigate();
+  const location = useLocation();
+
+  const isLoggedIn = !!getAccessToken();
+
   const plansAll = useMemo<Plan[]>(
     () => [
       { id: 1, name: "Pro", amount_cents: 1000, currency: "usd", interval: "month", popular: true },
@@ -46,16 +45,28 @@ export default function Pricing() {
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   async function subscribe(planId: number) {
+    // ✅ Require login before checkout
+    const token = getAccessToken();
+    if (!token) {
+      alert("Please login to continue checkout.");
+      nav("/", { replace: true, state: { from: location.pathname } });
+      return;
+    }
+
     setError("");
     setLoading(planId);
+
     try {
+      // ✅ If backend uses req.auth.email, you DON'T need to send userEmail anymore.
+      // But keeping it here won't hurt if backend ignores it.
       const res = await api.post("/api/subscriptions/checkout", {
-        userEmail: email,
         planId,
+        userEmail: email,
       });
 
-      const url = res.data.checkoutUrl as string | undefined;
-      if (!url) throw new Error("No checkoutUrl returned from server");
+      // depending on your backend response naming:
+      const url = (res.data.checkoutUrl || res.data.url) as string | undefined;
+      if (!url) throw new Error("No checkout URL returned from server");
 
       window.location.href = url;
     } catch (e: any) {
@@ -68,7 +79,7 @@ export default function Pricing() {
   return (
     <Layout>
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6 items-start">
-        {/* LEFT: Plan + details */}
+        {/* LEFT */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -108,7 +119,7 @@ export default function Pricing() {
             </button>
           </div>
 
-          {/* Plan card */}
+          {/* Plan cards */}
           <div className="mt-5 grid gap-4">
             {plans.map((p) => (
               <motion.div
@@ -117,7 +128,6 @@ export default function Pricing() {
                 transition={{ type: "spring", stiffness: 260, damping: 18 }}
                 className="relative rounded-3xl border border-white/12 bg-white/5 backdrop-blur-xl p-6 overflow-hidden"
               >
-                {/* glow */}
                 <div className="pointer-events-none absolute -right-28 -top-28 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
 
                 {p.popular ? (
@@ -128,32 +138,25 @@ export default function Pricing() {
 
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-lg font-extrabold">Pro</div>
-                    <div className="mt-1 text-sm text-white/60">
-                      For production-ready billing, webhooks & workers.
-                    </div>
+                    <div className="text-lg font-extrabold">{p.name}</div>
+                    <div className="mt-1 text-sm text-white/60">For production-ready billing, webhooks & workers.</div>
                   </div>
 
                   <div className="text-right">
-                    <div className="text-3xl font-extrabold">
-                      {formatMoney(p.amount_cents, p.currency)}
-                    </div>
+                    <div className="text-3xl font-extrabold">{formatMoney(p.amount_cents, p.currency)}</div>
                     <div className="text-sm text-white/55">per {p.interval}</div>
                   </div>
                 </div>
 
                 <ul className="mt-4 space-y-2 text-sm text-white/75">
-                  {[
-                    "Recurring billing",
-                    "Webhook-confirmed activation",
-                    "Email receipts via worker",
-                    "Idempotent fulfillment",
-                  ].map((f) => (
-                    <li key={f} className="flex items-start gap-2">
-                      <FiCheckCircle className="mt-0.5 text-white/55" />
-                      <span>{f}</span>
-                    </li>
-                  ))}
+                  {["Recurring billing", "Webhook-confirmed activation", "Email receipts via worker", "Idempotent fulfillment"].map(
+                    (f) => (
+                      <li key={f} className="flex items-start gap-2">
+                        <FiCheckCircle className="mt-0.5 text-white/55" />
+                        <span>{f}</span>
+                      </li>
+                    )
+                  )}
                 </ul>
               </motion.div>
             ))}
@@ -206,7 +209,7 @@ export default function Pricing() {
           </div>
         </motion.div>
 
-        {/* RIGHT: Stripe-like order summary (sticky on desktop) */}
+        {/* RIGHT */}
         <motion.aside
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -244,13 +247,19 @@ export default function Pricing() {
                 "disabled:opacity-60 disabled:cursor-not-allowed"
               )}
             >
-              {loading === selectedPlan?.id ? (
-                "Redirecting to Stripe..."
-              ) : (
-                <span className="inline-flex items-center justify-center gap-2">
-                  Continue to checkout <FiArrowRight />
-                </span>
-              )}
+              {loading === selectedPlan?.id
+                ? "Redirecting to Stripe..."
+                : isLoggedIn
+                  ? (
+                    <span className="inline-flex items-center justify-center gap-2">
+                      Continue to checkout <FiArrowRight />
+                    </span>
+                  )
+                  : (
+                    <span className="inline-flex items-center justify-center gap-2">
+                      Login to continue <FiArrowRight />
+                    </span>
+                  )}
             </button>
 
             <div className="mt-4 text-xs text-white/55 leading-relaxed">
