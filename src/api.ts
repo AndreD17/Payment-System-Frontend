@@ -17,17 +17,17 @@ export function clearAccessToken() {
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
-  withCredentials: true, // ✅ IMPORTANT for refresh cookie
+  withCredentials: true, 
 });
 
-// Attach access token automatically
+
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Auto-refresh on 401, then retry once
+
 let isRefreshing = false;
 let pending: Array<(token: string | null) => void> = [];
 
@@ -41,14 +41,12 @@ api.interceptors.response.use(
   async (err) => {
     const original = err.config;
 
-    // only handle 401 once per request
     if (err?.response?.status !== 401 || original?._retry) {
       throw err;
     }
 
     original._retry = true;
 
-    // If already refreshing, wait for it
     if (isRefreshing) {
       const token = await new Promise<string | null>((resolve) => pending.push(resolve));
       if (token) {

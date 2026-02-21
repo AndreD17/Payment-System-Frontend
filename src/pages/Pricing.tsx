@@ -41,7 +41,7 @@ export default function Pricing() {
   );
 
   const plans = plansAll.filter((p) => p.interval === billing);
-  const selectedPlan = plans[0]; // single plan per billing in your setup
+  const selectedPlan = plans[0];
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 

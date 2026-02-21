@@ -17,12 +17,12 @@ type Receipt = {
 
   hostedInvoiceUrl?: string | null;
 
-  amountPaid?: number | null; // cents
-  amountDue?: number | null; // cents
+  amountPaid?: number | null;
+  amountDue?: number | null; 
   currency?: string | null;
 
-  currentPeriodEnd?: string | number | null; // ISO string or ms/seconds
-  periodEnd?: string | number | null; // fallback
+  currentPeriodEnd?: string | number | null; 
+  periodEnd?: string | number | null; 
 };
 
 function formatMoney(cents: number | null | undefined, currency?: string | null) {
@@ -36,7 +36,6 @@ function formatMoney(cents: number | null | undefined, currency?: string | null)
       currency: cur,
     }).format(value);
   } catch {
-    // fallback if currency code isn't supported by Intl in some env
     return `${value.toFixed(2)} ${cur}`;
   }
 }
@@ -44,10 +43,8 @@ function formatMoney(cents: number | null | undefined, currency?: string | null)
 function toDateString(input: any) {
   if (!input) return "—";
 
-  // If your backend sends timestamptz string, new Date(iso) is fine
-  // If it sends seconds, convert
   if (typeof input === "number") {
-    // heuristics: seconds vs ms
+ 
     const ms = input < 10_000_000_000 ? input * 1000 : input;
     return new Date(ms).toLocaleString();
   }
@@ -102,7 +99,6 @@ export default function Success() {
 
   useEffect(() => {
     fetchReceipt();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   const normalized = useMemo(() => {
