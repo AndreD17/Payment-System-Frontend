@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 export default function AdminLogin() {
   const nav = useNavigate();
-  const [email, setEmail] = useState("Damilaresam96@gmail.com");
+  const [email, setEmail] = useState("youxyzexample.com");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

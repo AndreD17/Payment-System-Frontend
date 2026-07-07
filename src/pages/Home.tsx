@@ -5,59 +5,105 @@ import { api, setAccessToken, clearAccessToken, getAccessToken } from "../api";
 
 const cx = (...c: Array<string | false | undefined | null>) => c.filter(Boolean).join(" ");
 
+type ApiAlert = {
+  type?: "error" | "info" | "success";
+  title?: string;
+  message?: string;
+  field?: "email" | "password" | "username";
+};
+
 export default function Home() {
   const nav = useNavigate();
   const location = useLocation();
 
   const [mode, setMode] = useState<"login" | "signup">("login");
+
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const loggedIn = !!getAccessToken();
+  const [loggedIn, setLoggedIn] = useState(!!getAccessToken());
 
-  // ✅ where to go after login/signup
   const redirectTo = useMemo(() => {
     const from = (location.state as any)?.from;
     return typeof from === "string" && from.startsWith("/") ? from : "/pricing";
   }, [location.state]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  function resetNotices() {
     setError("");
     setMsg("");
+  }
+
+  function readServerAlert(e: any): ApiAlert | null {
+    const a = e?.response?.data?.alert;
+    if (a && typeof a === "object") return a as ApiAlert;
+    return null;
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    resetNotices();
 
     if (!email || !password) {
       setError("Email and password are required.");
       return;
     }
 
+    if (mode === "signup") {
+      if (!username) {
+        setError("Username is required for signup.");
+        return;
+      }
+      if (username.length < 3 || username.length > 20) {
+        setError("Username must be between 3 and 20 characters.");
+        return;
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        setError("Username can only contain letters, numbers, and underscore.");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/signup";
-      const res = await api.post(endpoint, { email, password });
+      const payload = mode === "login" ? { email, password } : { username, email, password };
+
+      const res = await api.post(endpoint, payload);
 
       const token = res.data?.accessToken as string | undefined;
       if (!token) throw new Error("No access token returned from server.");
 
       setAccessToken(token);
-      setMsg(mode === "login" ? "Logged in successfully." : "Account created successfully.");
 
-      // ✅ go back to where user came from (e.g. /pricing)
+      setLoggedIn(true);
+      const serverAlert: ApiAlert | undefined = res.data?.alert;
+      setMsg(
+        serverAlert?.message ||
+          (mode === "login" ? "Logged in successfully." : "Account created successfully.")
+      );
+
       nav(redirectTo, { replace: true });
     } catch (e: any) {
-      const status = e?.response?.status;
+      const status = e?.response?.status as number | undefined;
       const serverMsg = e?.response?.data?.message;
+      const alert = readServerAlert(e);
 
-      // ✅ If user doesn't exist / invalid login
-      // Depending on your backend, this might be 401 or 404.
-      if (mode === "login" && (status === 401 || status === 404)) {
-        setError("Account not found (or wrong password). If you’re new here, please sign up.");
-        // optional: auto-switch to signup to make flow smoother
-        setMode("signup");
+      if (alert?.message) {
+        setError(alert.message);
+        if (mode === "login" && status === 404) setMode("signup");
+        return;
+      }
+
+      if (mode === "login" && status === 401) {
+        setError("Invalid email or password. Please try again.");
+      } else if (mode === "signup" && status === 409) {
+        setError(serverMsg || "Account already exists or username already taken.");
       } else {
         setError(serverMsg || e?.message || "Authentication failed.");
       }
@@ -67,10 +113,8 @@ export default function Home() {
   }
 
   async function logout() {
-    setError("");
-    setMsg("");
+    resetNotices();
     setLoading(true);
-
     try {
       await api.post("/api/auth/logout");
     } catch {
@@ -96,7 +140,10 @@ export default function Home() {
           <div className="mt-5 inline-flex rounded-2xl border border-white/10 bg-white/4 p-1">
             <button
               type="button"
-              onClick={() => setMode("login")}
+              onClick={() => {
+                setMode("login");
+                resetNotices();
+              }}
               className={cx(
                 "rounded-xl px-4 py-2 text-sm font-extrabold transition",
                 mode === "login" ? "bg-white text-black" : "text-white/75 hover:text-white"
@@ -106,7 +153,10 @@ export default function Home() {
             </button>
             <button
               type="button"
-              onClick={() => setMode("signup")}
+              onClick={() => {
+                setMode("signup");
+                resetNotices();
+              }}
               className={cx(
                 "rounded-xl px-4 py-2 text-sm font-extrabold transition",
                 mode === "signup" ? "bg-white text-black" : "text-white/75 hover:text-white"
@@ -142,6 +192,24 @@ export default function Home() {
 
           {/* Form */}
           <form onSubmit={submit} className="mt-5 grid gap-3">
+            {/* ✅ SIGNUP ORDER: Username -> Email -> Password */}
+            {mode === "signup" ? (
+              <div>
+                <label className="text-xs font-bold text-white/70">Username</label>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
+                  placeholder="e.g. andred17"
+                  disabled={loading || loggedIn}
+                  autoComplete="username"
+                />
+                <p className="mt-2 text-xs text-white/50">
+                  Letters, numbers, underscore. 3–20 chars.
+                </p>
+              </div>
+            ) : null}
+
             <div>
               <label className="text-xs font-bold text-white/70">Email</label>
               <input
@@ -150,19 +218,41 @@ export default function Home() {
                 className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
                 placeholder="you@example.com"
                 disabled={loading || loggedIn}
+                autoComplete="email"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-white/70">Password</label>
-              <input
-                value={password}
-                type="password"
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none"
-                placeholder="••••••••"
-                disabled={loading || loggedIn}
-              />
+              <div className="relative">
+   <label className="text-xs font-bold text-white/70">Password</label>
+        <input
+          value={password}
+          type={showPassword ? "text" : "password"}
+          onChange={(e) => setPassword(e.target.value)}
+          className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 pr-12 text-sm text-white outline-none"
+          placeholder="••••••••"
+          disabled={loading || loggedIn}
+          autoComplete={mode === "login" ? "current-password" : "new-password"}
+        />
+
+        <button
+          type="button"
+          onClick={() => setShowPassword((prev) => !prev)}
+          className="absolute right-3 top-9 text-white/60 hover:text-white text-sm"
+        >
+          {showPassword ? "🙈" : "👁️"}
+        </button>
+     {mode === "login" && (
+      <div className="mt-2 text-right">
+        <button
+          type="button"
+          onClick={() => nav("/forgot-password")}
+          className="text-xs text-white/60 hover:text-white underline"
+        >
+          Forgot password?
+        </button>
+      </div>
+      )}  </div>
             </div>
 
             {error ? (
@@ -179,7 +269,7 @@ export default function Home() {
 
             {!loggedIn ? (
               <button
-                disabled={loading || !email || !password}
+                disabled={loading || !email || !password || (mode === "signup" && !username)}
                 className="w-full rounded-xl px-4 py-3 text-sm font-extrabold border border-white/10 bg-white text-black hover:bg-white/90 disabled:opacity-60"
               >
                 {loading ? "Please wait..." : mode === "login" ? "Login" : "Create account"}

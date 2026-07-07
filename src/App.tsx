@@ -6,6 +6,9 @@ import Cancel from "./pages/Cancel";
 import AdminRefund from "./pages/AdminRefund";
 import AdminLogin from "./pages/AdminLogin";
 import AdminLogout from "./pages/AdminLogout";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+//import Dashboard from "./pages/Dashboard";
 //import AppLayout from "./pages/AppLayout";
 //import ProtectedRoute from "./auth/ProtectedRoute";
 
@@ -14,6 +17,9 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/pricing" element={<Pricing />} />
+
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route path="/success" element={<Success />} />
       <Route path="/cancel" element={<Cancel />} />
