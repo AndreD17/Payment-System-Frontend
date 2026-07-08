@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import toast, { Toaster } from "react-hot-toast";
+
 import Layout from "../components/Layout";
 import { api, setAccessToken, clearAccessToken, getAccessToken } from "../api";
 
@@ -115,24 +117,28 @@ export default function Home() {
   async function logout() {
     resetNotices();
     setLoading(true);
+
     try {
       await api.post("/api/auth/logout");
+      toast.success("Account logged out successfully");
     } catch {
-      // ignore
+      toast.error("Logout failed");
     } finally {
       clearAccessToken();
-      setMsg("Logged out.");
+      setLoggedIn(false);
       setLoading(false);
+      nav("/", { replace: true });
     }
   }
 
   return (
     <Layout>
+      <Toaster position="top-right" />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <div className="rounded-3xl border border-white/10 bg-white/4 p-6">
           <h1 className="text-2xl font-extrabold tracking-tight">Home</h1>
           <p className="mt-2 text-sm text-white/65">
-            Login or signup to continue. After authentication, you’ll be redirected to{" "}
+            Login or signup to continue. After authentication, you'll be redirected to{" "}
             <b className="text-white">{redirectTo}</b>.
           </p>
 
@@ -169,7 +175,7 @@ export default function Home() {
           {/* Logged-in banner */}
           {loggedIn ? (
             <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
-              You’re already logged in.
+              You're already logged in.
               <div className="mt-3 flex gap-2">
                 <button
                   type="button"
@@ -182,7 +188,7 @@ export default function Home() {
                   type="button"
                   onClick={logout}
                   disabled={loading}
-                  className="rounded-xl px-4 py-2 text-sm font-extrabold border border-white/10 bg-white/10 text-white hover:bg-white/15 disabled:opacity-60"
+                  className="rounded-xl px-4 py-2 text-sm font-extrabold border border-white/10 bg-white/10 text-white hover:bg-white/15 disabled:opacity-60 transition active:scale-95"
                 >
                   {loading ? "Logging out..." : "Logout"}
                 </button>
@@ -192,7 +198,7 @@ export default function Home() {
 
           {/* Form */}
           <form onSubmit={submit} className="mt-5 grid gap-3">
-            {/* ✅ SIGNUP ORDER: Username -> Email -> Password */}
+            {/* SIGNUP ORDER: Username -> Email -> Password */}
             {mode === "signup" ? (
               <div>
                 <label className="text-xs font-bold text-white/70">Username</label>
@@ -224,35 +230,36 @@ export default function Home() {
 
             <div>
               <div className="relative">
-   <label className="text-xs font-bold text-white/70">Password</label>
-        <input
-          value={password}
-          type={showPassword ? "text" : "password"}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 pr-12 text-sm text-white outline-none"
-          placeholder="••••••••"
-          disabled={loading || loggedIn}
-          autoComplete={mode === "login" ? "current-password" : "new-password"}
-        />
+                <label className="text-xs font-bold text-white/70">Password</label>
+                <input
+                  value={password}
+                  type={showPassword ? "text" : "password"}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 pr-12 text-sm text-white outline-none"
+                  placeholder="••••••••"
+                  disabled={loading || loggedIn}
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                />
 
-        <button
-          type="button"
-          onClick={() => setShowPassword((prev) => !prev)}
-          className="absolute right-3 top-9 text-white/60 hover:text-white text-sm"
-        >
-          {showPassword ? "🙈" : "👁️"}
-        </button>
-     {mode === "login" && (
-      <div className="mt-2 text-right">
-        <button
-          type="button"
-          onClick={() => nav("/forgot-password")}
-          className="text-xs text-white/60 hover:text-white underline"
-        >
-          Forgot password?
-        </button>
-      </div>
-      )}  </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-9 text-white/60 hover:text-white text-sm"
+                >
+                  {showPassword ? "🙈" : "👁️"}
+                </button>
+              </div>
+              {mode === "login" && (
+                <div className="mt-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => nav("/forgot-password")}
+                    className="text-xs text-white/60 hover:text-white underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
             </div>
 
             {error ? (
